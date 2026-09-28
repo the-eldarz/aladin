@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Империя Аладина</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #222; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+
+    #loading-screen { position: fixed; inset: 0; z-index: 9999; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.6s ease; }
+    .loading-bg { position: absolute; inset: 0; background-image: url('splash.jpg'); background-size: cover; background-position: center; opacity: 0.9; }
+    .loading-content { position: relative; z-index: 2; width: 80%; max-width: 320px; text-align: center; margin-top: 150px; }
+    .loading-bar { width: 100%; height: 12px; background: rgba(255,255,255,0.3); border-radius: 10px; overflow: hidden; margin-bottom: 25px; border: 2px solid rgba(255,255,255,0.5); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    .loading-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #f8b500, #ffeb3b); transition: width 1.5s ease-in-out; }
+    #start-btn { opacity: 0; padding: 15px 35px; background: linear-gradient(180deg, #2ecc71, #27ae60); color: white; font-weight: 900; font-size: 16px; border: none; border-radius: 30px; cursor: pointer; transition: opacity 0.4s, transform 0.1s; box-shadow: 0 6px 15px rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1px; font-family: inherit; }
+    #start-btn.visible { opacity: 1; }
+    #start-btn:active { transform: scale(0.95); }
+
+    #game-container { width: 100%; max-width: 450px; height: 100vh; max-height: 850px; background: radial-gradient(circle at center, #fdf4d8 0%, #f8b500 100%); position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-radius: 20px; opacity: 0; transition: opacity 0.5s ease; }
+    #game-container.ready { opacity: 1; }
+
+    #top-bar { position: relative; display: flex; align-items: center; padding: 0 8px; height: 100px; overflow: hidden; background: linear-gradient(180deg, #1e90ff, #0052D4); border-bottom: 4px solid #f8b500; box-shadow: 0 4px 10px rgba(0,0,0,0.4); z-index: 10; flex-shrink: 0; }
+    .flag-bg { position: absolute; left: -45px; top: 50%; transform: translateY(-50%) rotate(-16deg); width: 210px; height: 130px; background-image: url('wadiya-flag.png'); background-size: contain; background-position: center; background-repeat: no-repeat; filter: drop-shadow(5px 5px 10px rgba(0,0,0,0.65)); z-index: 1; pointer-events: none; }
+
+    .money-container { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; flex: 1; margin-left: 100px; margin-right: 4px; min-width: 0; }
+    .money-row { display: flex; align-items: center; gap: 1px; height: 52px; }
+    .dinar-sign-img { height: 42px; width: auto; margin-right: 2px; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.6)); }
+    .dinar-sign-fallback { color: #FFD700; font-family: 'Impact', 'Arial Black', sans-serif; font-size: 28px; margin-right: 4px; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; }
+
+    #money-digits { display: flex; align-items: center; gap: 2px; }
+    .digit-cube { width: 25px; height: 44px; display: flex; justify-content: center; align-items: center; background: linear-gradient(180deg, #fef8e7 0%, #f5e6c8 40%, #e8d4a0 100%); border-radius: 5px; border: 1.5px solid #b8935a; box-shadow: inset 0 2px 0 rgba(255,255,255,0.9), inset 0 -3px 0 rgba(139,90,43,0.25), 0 2px 4px rgba(0,0,0,0.45); font-family: 'Impact', 'Arial Black', sans-serif; font-size: 24px; font-weight: 900; color: #000; line-height: 1; position: relative; text-shadow: 0 1px 0 rgba(255,255,255,0.6); }
+    .digit-cube::before { content: ''; position: absolute; top: 2px; left: 3px; right: 3px; height: 6px; background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0)); border-radius: 3px; pointer-events: none; }
+    .digit-cube::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: linear-gradient(0deg, rgba(139,90,43,0.4), rgba(139,90,43,0)); border-radius: 0 0 4px 4px; pointer-events: none; }
+
+    .suffix-char { font-family: 'Impact', 'Arial Black', sans-serif; font-size: 26px; font-weight: 900; color: #fff; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; margin: 0 1px; line-height: 1; }
+
+    #money-digits.small .digit-cube { width: 21px; height: 38px; font-size: 20px; }
+    #money-digits.tiny .digit-cube { width: 17px; height: 32px; font-size: 16px; border-radius: 4px; }
+    #money-digits.micro .digit-cube { width: 14px; height: 27px; font-size: 13px; border-radius: 3px; }
+    #money-digits.nano .digit-cube { width: 11px; height: 22px; font-size: 11px; border-radius: 3px; }
+
+    .cps-value { font-size: 11px; font-weight: bold; color: #fff; background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 10px; margin-top: 2px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.5); white-space: nowrap; }
+
+    .right-stats { display: flex; align-items: center; gap: 5px; flex-shrink: 0; z-index: 2; position: relative; }
+    .gem-display { display: flex; align-items: center; background: rgba(0,0,0,0.35); padding: 4px 8px; border-radius: 15px; font-weight: bold; font-size: 13px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+    .gem-display .icon { font-size: 15px; margin-right: 3px; }
+    .settings-btn { font-size: 24px; cursor: pointer; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5)); transition: transform 0.2s; line-height: 1; }
+    .settings-btn:active { transform: scale(0.8) rotate(45deg); }
+
+    #main-area { flex: 1; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; padding: 10px; }
+
+    /* ========== БОКОВЫЕ АУРЫ ========== */
+    #aura-left, #aura-right {
+        position: absolute;
+        top: 100px;
+        bottom: 0;
+        width: 85px;
+        pointer-events: none;
+        z-index: 200;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+        color: rgba(255, 152, 0, 0.85);
+    }
+    #aura-left { left: 0; background: linear-gradient(to right, currentColor 0%, transparent 100%); }
+    #aura-right { right: 0; background: linear-gradient(to left, currentColor 0%, transparent 100%); }
+
+    /* ★ Оранжевая аура при x2 — светится */
+    #game-container.aura-x2 #aura-left,
+    #game-container.aura-x2 #aura-right {
+        opacity: 1;
+        color: rgba(255, 152, 0, 0.95);
+        animation: auraGlowOrange 0.5s infinite alternate;
+    }
+    @keyframes auraGlowOrange {
+        from { opacity: 0.6; filter: blur(0px) brightness(1); }
+        to { opacity: 1; filter: blur(5px) brightness(1.5); }
+    }
+
+    /* ★ Красная аура при x4 — сильное свечение и быстрая пульсация */
+    #game-container.aura-x4 #aura-left,
+    #game-container.aura-x4 #aura-right {
+        opacity: 1;
+        color: rgba(220, 30, 30, 0.95);
+        animation: auraGlowRed 0.3s infinite alternate;
+    }
+    @keyframes auraGlowRed {
+        from { opacity: 0.55; filter: blur(0px) brightness(1); }
+        to { opacity: 1; filter: blur(6px) brightness(1.7); }
+    }
+
+    /* ========== КОМБО-ИНДИКАТОР ========== */
+    #combo-indicator {
+        position: absolute;
+        top: 112px;
+        left: 50%;
+        transform: translateX(-50%) scale(0);
+        background: linear-gradient(180deg, #ff6b6b, #c0392b);
+        color: white;
+        font-family: 'Impact', 'Arial Black', sans-serif;
+        font-size: 26px;
+        padding: 6px 22px;
+        border-radius: 25px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.35);
+        border: 2px solid #fff;
+        z-index: 300;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s, transform 0.2s;
+        text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+        letter-spacing: 1px;
+    }
+    #combo-indicator.active { opacity: 1; transform: translateX(-50%) scale(1); }
+    #combo-indicator.x4 {
+        background: linear-gradient(180deg, #ffb347, #e65100);
+        font-size: 32px;
+        border-color: #ffe066;
+        box-shadow: 0 5px 20px rgba(255,152,0,0.8), inset 0 2px 0 rgba(255,255,255,0.4);
+        animation: comboPulse 0.4s infinite alternate;
+    }
+    @keyframes comboPulse {
+        from { transform: translateX(-50%) scale(1); }
+        to { transform: translateX(-50%) scale(1.12); }
+    }
+
+    #bill-stack-container {
+        position: relative;
+        z-index: 4;
+        cursor: grab;
+        width: 68%;
+        max-width: 230px;
+        aspect-ratio: 1 / 2.35;
+        margin-left: 30px;
+        margin-right: 30px;
+        margin-top: 10px;
+        touch-action: none;
+    }
+    #bill-stack-container:active { cursor: grabbing; }
+
+    #bills-wrapper {
+        position: absolute;
+        inset: 0;
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transform-origin: center center;
+        will-change: transform;
+    }
+    #main-area.combo-x2 #bills-wrapper { transform: scale(1.08); }
+    #main-area.combo-x4 #bills-wrapper { transform: scale(1.18); }
+
+    .bill-behind { position: absolute; top: 4px; left: 4px; width: 100%; height: 100%; border-radius: 8px; background-image: url('dinar.png'); background-size: cover; background-position: center; border: 1px solid #d0c8a8; box-shadow: 2px 3px 6px rgba(0,0,0,0.3); pointer-events: none; }
+
+    .bill { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px; box-shadow: 0 12px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.1); overflow: hidden; background: #fdfcf0; will-change: transform, opacity; transform: translate(0,0); opacity: 1; transition: none; }
+    .bill-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .fly-away {
+        position: absolute;
+        width: 60px;
+        height: 140px;
+        border-radius: 6px;
+        background-image: url('dinar.png');
+        background-size: cover;
+        background-position: center;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+        pointer-events: none;
+        z-index: 3;
+        opacity: 0.9;
+        left: 50%;
+        top: 50%;
+        margin-left: -30px;
+        margin-top: -70px;
+    }
+    @keyframes flyAway {
+        0% { transform: translate(0,0) rotate(0) scale(0.8); opacity: 0.9; }
+        100% { transform: translate(var(--ex), var(--ey)) rotate(var(--er)) scale(0.4); opacity: 0; }
+    }
+
+    #bill-pin {
+        position: absolute;
+        top: 50%;
+        left: -50px;
+        transform: translateY(-50%);
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        z-index: 20;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+    }
+    #main-area.combo-x2 #bill-pin { transform: translateY(-50%) translateX(-9px); }
+    #main-area.combo-x4 #bill-pin { transform: translateY(-50%) translateX(-21px); }
+
+    .clip-img { width: 100px; height: auto; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6)); display: block; position: relative; z-index: 1; }
+
+    .pin-fallback { display: none; flex-direction: column; align-items: center; }
+    .pin-clip { width: 55px; height: 38px; background: linear-gradient(180deg, #34495e, #1a252f); border-radius: 8px; box-shadow: 0 6px 12px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -3px 0 rgba(0,0,0,0.4); position: relative; border: 1px solid #0f1620; }
+    .pin-clip::before { content: ''; position: absolute; top: 7px; left: 10px; width: 4px; height: 22px; background: #4a5c6e; border-radius: 2px; box-shadow: inset -1px 0 0 rgba(0,0,0,0.5); }
+    .pin-clip::after { content: ''; position: absolute; top: 7px; right: 10px; width: 4px; height: 22px; background: #4a5c6e; border-radius: 2px; box-shadow: inset -1px 0 0 rgba(0,0,0,0.5); }
+    .pin-ring { width: 16px; height: 16px; border: 4px solid #b0bec5; border-radius: 50%; position: absolute; top: 6px; left: 50%; transform: translateX(-50%); box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+
+    .pin-tag {
+        position: relative;
+        width: 56px;
+        height: 38px;
+        background: linear-gradient(180deg, #ffd54f, #f8b500);
+        border-radius: 7px;
+        margin-top: -28px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: 900;
+        color: #5a3a1a;
+        font-size: 20px;
+        border: 1.5px solid #d4a000;
+        font-family: 'Impact', 'Arial Black', sans-serif;
+        z-index: 3;
+    }
+
+    #tutorial-hand { position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); font-size: 45px; z-index: 10; pointer-events: none; animation: handBob 1.5s infinite ease-in-out; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); transition: opacity 0.3s; }
+    @keyframes handBob { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-15px); } }
+
+    #bottom-nav { display: flex; justify-content: space-around; background: linear-gradient(0deg, #0052D4, #4364F7); padding: 10px 0; border-top: 4px solid #f8b500; z-index: 10; box-shadow: 0 -4px 10px rgba(0,0,0,0.2); position: relative; flex-shrink: 0; }
+    .nav-btn { background: none; border: none; color: #a8c0ff; display: flex; flex-direction: column; align-items: center; font-size: 10px; cursor: pointer; font-weight: bold; transition: all 0.2s; width: 70px; }
+    .nav-btn:hover, .nav-btn.active { color: #fff; transform: translateY(-2px); }
+    .nav-btn .icon { font-size: 22px; margin-bottom: 4px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); }
+
+    #green-aura { position: absolute; bottom: 0; left: 0; width: 100%; height: 380px; background: radial-gradient(ellipse at 30% 100%, rgba(46,204,113,0.8) 0%, rgba(46,204,113,0.4) 35%, rgba(46,204,113,0) 70%); z-index: 1100; pointer-events: none; opacity: 0; transition: opacity 0.5s ease; }
+    #green-aura.active { opacity: 1; }
+
+    #character { position: absolute; bottom: -30px; left: -35px; z-index: 1600; width: 260px; height: 360px; display: none; justify-content: center; align-items: flex-end; pointer-events: none; opacity: 0; transition: opacity 0.4s ease; }
+    #aladdin-img { width: 100%; height: 100%; object-fit: contain; object-position: bottom; filter: drop-shadow(5px 0 15px rgba(0,0,0,0.4)); }
+
+    #speech-bubble { position: absolute; bottom: 320px; left: 20px; background: linear-gradient(180deg, #fef8e7 0%, #f5e6c8 100%); border: 3px solid #d4a000; border-radius: 22px; padding: 14px 16px; font-size: 13px; font-weight: bold; max-width: 250px; color: #5a3a1a; box-shadow: 0 8px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.8); z-index: 1700; display: none; opacity: 0; transform: scale(0.8) translateY(20px); transition: opacity 0.4s, transform 0.4s; cursor: pointer; font-family: 'Georgia', serif; font-style: italic; line-height: 1.3; }
+    #speech-bubble::after { content: ''; position: absolute; bottom: -14px; left: 30px; border-width: 14px 14px 0; border-style: solid; border-color: #f5e6c8 transparent transparent transparent; z-index: 2; }
+    #speech-bubble::before { content: ''; position: absolute; bottom: -19px; left: 27px; border-width: 17px 17px 0; border-style: solid; border-color: #d4a000 transparent transparent transparent; z-index: 1; }
+
+    #dialogue-overlay { position: absolute; inset: 0; z-index: 1500; display: none; background: rgba(0,0,0,0.15); cursor: pointer; }
+    #dialogue-overlay.active { display: block; }
+
+    .floating-text { position: absolute; color: #2ecc71; font-weight: 900; font-size: 22px; pointer-events: none; animation: floatUp 1s cubic-bezier(0.25, 1, 0.5, 1) forwards; z-index: 20; text-shadow: 2px 2px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
+    .floating-text.combo { color: #ff9800; font-size: 28px; }
+    @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(0.5); } 20% { transform: translateY(-20px) scale(1.2); } 100% { opacity: 0; transform: translateY(-80px) scale(1); } }
+
+    .menu-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+    .menu-content { width: 94%; height: 88%; background: linear-gradient(180deg, #0052D4, #4364F7); border-radius: 20px; border: 4px solid #f8b500; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    .menu-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #0052D4; border-bottom: 3px solid #f8b500; }
+    .menu-header h2 { color: white; margin: 0; font-size: 20px; text-transform: uppercase; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .menu-subtitle { color: #a8c0ff; font-size: 12px; font-weight: bold; text-align: center; padding: 6px; background: rgba(0,0,0,0.2); }
+    .close-btn { background: none; border: none; color: white; font-size: 30px; cursor: pointer; font-weight: bold; line-height: 1; padding: 0 5px; }
+    .close-btn:active { transform: scale(0.8); }
+    
+    .menu-list { flex: 1; overflow-y: auto; padding: 12px; background: #e0eaf5; display: flex; flex-direction: column; gap: 8px; }
+    .menu-item { display: flex; justify-content: space-between; align-items: center; background: white; border-radius: 12px; padding: 10px 12px; border: 2px solid #b0c4de; box-shadow: 0 3px 5px rgba(0,0,0,0.1); }
+    .menu-item-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+    .menu-item-icon { font-size: 26px; background: #f0f0f0; border-radius: 50%; width: 46px; height: 46px; display: flex; justify-content: center; align-items: center; border: 2px solid #ccc; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; }
+    .menu-item-text { display: flex; flex-direction: column; }
+    .menu-item-text h3 { margin: 0 0 3px 0; font-size: 13px; color: #333; }
+    .menu-item-text p { margin: 0; font-size: 11px; color: #2ecc71; font-weight: bold; }
+    
+    .buy-btn { background: linear-gradient(180deg, #2ecc71, #27ae60); color: white; border: none; padding: 8px 10px; border-radius: 10px; font-weight: bold; font-size: 12px; cursor: pointer; box-shadow: 0 3px 0 #1e8449; transition: all 0.1s; min-width: 80px; text-align: center; display: flex; flex-direction: column; align-items: center; }
+    .buy-btn:active { transform: translateY(3px); box-shadow: none; }
+    .buy-btn.disabled { background: #95a5a6; box-shadow: 0 3px 0 #7f8c8d; cursor: not-allowed; }
+    .buy-btn.gem-btn { background: linear-gradient(180deg, #9b59b6, #8e44ad); box-shadow: 0 3px 0 #6c3483; }
+    .buy-btn .cost { font-size: 12px; }
+    .buy-btn .count { font-size: 9px; font-weight: normal; opacity: 0.9; }
+    .menu-list::-webkit-scrollbar { width: 6px; }
+    .menu-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px; }
+    .menu-list::-webkit-scrollbar-thumb { background: #0052D4; border-radius: 3px; }
+
+    #settings-menu .menu-content { height: auto; max-height: 80%; background: #e0eaf5; border: 4px solid #1e90ff; }
+    #settings-menu .menu-header { background: linear-gradient(180deg, #1e90ff, #0052D4); border-bottom: none; }
+    .settings-body { padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; background: #1e90ff; padding: 14px 18px; border-radius: 12px; color: white; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3); border: 2px solid #0052D4; }
+    .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; inset: 0; background-color: #ccc; transition: .4s; border-radius: 34px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); }
+    .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+    input:checked + .slider { background-color: #2ecc71; }
+    input:checked + .slider:before { transform: translateX(22px); }
+    .menu-action-btn { background: #1e90ff; color: white; border: 2px solid #0052D4; padding: 14px; border-radius: 12px; font-weight: bold; font-size: 15px; cursor: pointer; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3); width: 100%; }
+    .menu-action-btn:active { transform: translateY(2px); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+    <div class="loading-bg"></div>
+    <div class="loading-content">
+        <div class="loading-bar"><div class="loading-fill"></div></div>
+        <button id="start-btn">Начать игру</button>
+    </div>
+</div>
+
+<div id="game-container">
+    <header id="top-bar">
+        <div class="flag-bg"></div>
+        <div class="money-container">
+            <div class="money-row" id="money-row">
+                <img src="dinar-sign.png" class="dinar-sign-img" alt="Д" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-block';">
+                <span class="dinar-sign-fallback" style="display:none;">Д</span>
+                <div id="money-digits"></div>
+            </div>
+            <div class="cps-value" id="cps-display">Д 0 / сек</div>
+        </div>
+        <div class="right-stats">
+            <div class="gem-display"><span class="icon">💎</span><span id="gems-display">10</span></div>
+            <div class="settings-btn" onclick="toggleSettings()">⚙️</div>
+        </div>
+    </header>
+
+    <main id="main-area">
+        <div id="bill-stack-container">
+            <div id="bills-wrapper">
+                <div class="bill-behind" style="transform: translate(22px, 9px); opacity: 0.55;"></div>
+                <div class="bill-behind" style="transform: translate(19px, 8px); opacity: 0.65;"></div>
+                <div class="bill-behind" style="transform: translate(16px, 7px); opacity: 0.72;"></div>
+                <div class="bill-behind" style="transform: translate(13px, 6px); opacity: 0.78;"></div>
+                <div class="bill-behind" style="transform: translate(10px, 5px); opacity: 0.84;"></div>
+                <div class="bill-behind" style="transform: translate(7px, 4px); opacity: 0.9;"></div>
+                <div class="bill-behind" style="transform: translate(4px, 2px); opacity: 0.95;"></div>
+                <div class="bill-behind" style="transform: translate(2px, 1px);"></div>
+
+                <div class="bill" id="bill-1">
+                    <img src="dinar.png" class="bill-img" alt="" onerror="this.style.display='none'">
+                </div>
+                <div class="bill" id="bill-2">
+                    <img src="dinar.png" class="bill-img" alt="" onerror="this.style.display='none'">
+                </div>
+                <div class="bill" id="bill-3">
+                    <img src="dinar.png" class="bill-img" alt="" onerror="this.style.display='none'">
+                </div>
+            </div>
+
+            <div id="bill-pin">
+                <img src="clip.png" class="clip-img" alt="Клипса" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="pin-fallback">
+                    <div class="pin-clip"><div class="pin-ring"></div></div>
+                </div>
+                <div class="pin-tag" id="pin-counter">1</div>
+            </div>
+
+            <div id="tutorial-hand">👆</div>
+        </div>
+    </main>
+
+    <div id="aura-left"></div>
+    <div id="aura-right"></div>
+    <div id="combo-indicator">x2</div>
+
+    <div id="green-aura"></div>
+    <div id="dialogue-overlay"></div>
+    <div id="character">
+        <img src="aladdin.png" id="aladdin-img" alt="Аладин" onerror="this.style.display='none'">
+    </div>
+    <div id="speech-bubble"></div>
+
+    <div id="menu-overlay" class="menu-overlay">
+        <div class="menu-content">
+            <div class="menu-header">
+                <h2 id="menu-title">Меню</h2>
+                <button class="close-btn" onclick="closeMenu()">×</button>
+            </div>
+            <div class="menu-subtitle" id="menu-subtitle"></div>
+            <div class="menu-list" id="menu-list"></div>
+        </div>
+    </div>
+
+    <div id="settings-menu" class="menu-overlay">
+        <div class="menu-content">
+            <div class="menu-header">
+                <h2>Настройки</h2>
+                <button class="close-btn" onclick="toggleSettings()">×</button>
+            </div>
+            <div class="settings-body">
+                <div class="setting-row"><span>Звуки</span><label class="switch"><input type="checkbox" id="sound-toggle" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Музыка</span><label class="switch"><input type="checkbox" id="music-toggle" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Уведомления</span><label class="switch"><input type="checkbox" id="notif-toggle" checked><span class="slider"></span></label></div>
+                <button class="menu-action-btn">Язык</button>
+                <button class="menu-action-btn">Оценить приложение</button>
+                <button class="menu-action-btn">Поддержка</button>
+                <button class="menu-action-btn">Политика конфиденциальности</button>
+            </div>
+        </div>
+    </div>
+
+    <nav id="bottom-nav">
+        <button class="nav-btn active" onclick="openMenu('business', event)"><span class="icon">💵</span>Бизнес</button>
+        <button class="nav-btn" onclick="openMenu('reputation', event)"><span class="icon">👍</span>Репутация</button>
+        <button class="nav-btn" onclick="openMenu('construction', event)"><span class="icon">🏗️</span>Строительство</button>
+        <button class="nav-btn" onclick="openMenu('vip', event)"><span class="icon">💎</span>VIP</button>
+    </nav>
+</div>
+
+<script>
+// ========== СОСТОЯНИЕ ==========
+const gameState = { money: 0, cps: 0, gems: 10, clickPower: 1, billDenom: 1, cpsMultiplier: 1, clickMultiplier: 1, offlineHours: 0, comboMultiplier: 1 };
+let gameStarted = false;
+let currentBillSrc = 'dinar.png';
+
+// ========== АУДИО ==========
+const music = new Audio('music.mp3'); music.loop = true;
+const swipeSound = new Audio('swipe.mp3');
+let soundEnabled = true, musicEnabled = true;
+
+function tryPlayMusic() {
+    if (musicEnabled) {
+        music.play().catch(() => {
+            const unlock = () => { if (musicEnabled) music.play().catch(()=>{}); document.removeEventListener('click', unlock); document.removeEventListener('touchstart', unlock); };
+            document.addEventListener('click', unlock); document.addEventListener('touchstart', unlock);
+        });
+    }
+}
+tryPlayMusic();
+
+// ========== МЕНЮ ДАННЫЕ ==========
+const MENUS = {
+    business: { title: 'Бизнес', subtitle: 'Постоянный доход Вадии!', data: [
+        { name: "Верблюжья ферма", icon: "🐪", baseCost: 80, cps: 15, count: 0 },
+        { name: "Финиковая плантация", icon: "🌴", baseCost: 2400, cps: 45, count: 0 },
+        { name: "Ковровый цех", icon: "🧵", baseCost: 9600, cps: 135, count: 0 },
+        { name: "Ювелирная лавка", icon: "💍", baseCost: 38400, cps: 405, count: 0 },
+        { name: "Рыбный рынок Вадии", icon: "🐟", baseCost: 150000, cps: 1200, count: 0 },
+        { name: "Нефтяная вышка", icon: "🛢️", baseCost: 615000, cps: 3600, count: 0 },
+        { name: "Отель 'Аладин'", icon: "🏨", baseCost: 2500000, cps: 11000, count: 0 },
+        { name: "Казино 'Золотой динар'", icon: "🎰", baseCost: 12300000, cps: 44000, count: 0 },
+        { name: "Оружейный завод", icon: "🔫", baseCost: 61000000, cps: 175000, count: 0 },
+        { name: "Парфюмерия Вадии", icon: "💐", baseCost: 300000000, cps: 800000, count: 0 },
+        { name: "Пищевая продукция", icon: "🍯", baseCost: 1500000000, cps: 2500000, count: 0 },
+        { name: "Фармкомпания Вадии", icon: "💊", baseCost: 9200000000, cps: 25000000, count: 0 },
+        { name: "ГосТВ Вадии", icon: "📺", baseCost: 55000000000, cps: 70000000, count: 0 },
+        { name: "Авиалинии Вадии", icon: "✈️", baseCost: 600000000000, cps: 700000000, count: 0 },
+        { name: "Яхт-клуб 'Аладин'", icon: "🛥️", baseCost: 6700000000000, cps: 7000000000, count: 0 }
+    ]},
+    reputation: { title: 'Репутация', subtitle: 'Зарабатывай в оффлайне!', data: [
+        { name: "Поддержка элитного клуба", icon: "💰", baseCost: 200, effect: '+1ч офлайн', offlineAdd: 1, count: 0, max: 10 },
+        { name: "Лекция в университете", icon: "🎓", baseCost: 1500, effect: '+1ч офлайн', offlineAdd: 1, count: 0, max: 10 },
+        { name: "Сквош с нужной персоной", icon: "🎾", baseCost: 24000, effect: '+2ч офлайн', offlineAdd: 2, count: 0, max: 5 },
+        { name: "Пожертвования в фонды", icon: "🎁", baseCost: 24000, effect: '+2ч офлайн', offlineAdd: 2, count: 0, max: 5 },
+        { name: "Подарки для бедных", icon: "🍞", baseCost: 385000, effect: '+3ч офлайн', offlineAdd: 3, count: 0, max: 5 },
+        { name: "Спасение животных", icon: "🐰", baseCost: 385000, effect: '+3ч офлайн', offlineAdd: 3, count: 0, max: 5 },
+        { name: "Завести подругу модель", icon: "💃", baseCost: 7400000, effect: '+5ч офлайн', offlineAdd: 5, count: 0, max: 5 },
+        { name: "Экстравагантный выход", icon: "💎", baseCost: 7400000, effect: '+5ч офлайн', offlineAdd: 5, count: 0, max: 5 },
+        { name: "Игра по мотивам Тебя", icon: "🎮", baseCost: 184000000, effect: '+10ч офлайн', offlineAdd: 10, count: 0, max: 3 },
+        { name: "Лоббирование интересов", icon: "🛢️", baseCost: 184000000, effect: '+10ч офлайн', offlineAdd: 10, count: 0, max: 3 },
+        { name: "Гольф-клуб для элит", icon: "⛳", baseCost: 5400000000, effect: '+24ч офлайн', offlineAdd: 24, count: 0, max: 3 }
+    ]},
+    construction: { title: 'Строительство', subtitle: 'Увеличивай номинал купюр!', data: [
+        { name: "Хижина бедуина", icon: "🛖", baseCost: 50, clickBonus: 4, denom: 2, count: 0 },
+        { name: "Дом в оазисе", icon: "🏠", baseCost: 3500, clickBonus: 40, denom: 10, count: 0 },
+        { name: "Экспоцентр", icon: "🏢", baseCost: 70000, clickBonus: 400, denom: 100, count: 0 },
+        { name: "Дворец эмира", icon: "🏰", baseCost: 1500000, clickBonus: 4000, denom: 1000, count: 0 },
+        { name: "БЦ Вадии", icon: "🏙️", baseCost: 20000000, clickBonus: 40000, denom: 10000, count: 0 },
+        { name: "Казино Вегаса", icon: "🎰", baseCost: 250000000, clickBonus: 400000, denom: 100000, count: 0 },
+        { name: "Крупное казино", icon: "🎲", baseCost: 3500000000, clickBonus: 4000000, denom: 1000000, count: 0 },
+        { name: "Золотая мечеть", icon: "🕌", baseCost: 50000000000, clickBonus: 40000000, denom: 10000000, count: 0 },
+        { name: "Статуя Аладина", icon: "🗿", baseCost: 550000000000, clickBonus: 400000000, denom: 100000000, count: 0 },
+        { name: "Золотой дворец", icon: "👑", baseCost: 6000000000000, clickBonus: 4000000000, denom: 1000000000, count: 0 },
+        { name: "Пирамида Вадии", icon: "🔺", baseCost: 65000000000000, clickBonus: 40000000000, denom: 10000000000, count: 0 },
+        { name: "Собственный остров", icon: "🏝️", baseCost: 1400000000000000, clickBonus: 400000000000, denom: 100000000000, count: 0 },
+        { name: "Колония на Марсе", icon: "🪐", baseCost: 160000000000000000, clickBonus: 4000000000000, denom: 1000000000000, count: 0 }
+    ]},
+    vip: { title: 'VIP', subtitle: 'Стань богаче!', data: [
+        { name: "Джекпот", icon: "🎰", cost: 15, effect: 'x5 к деньгам мгновенно', action: 'instantMult', value: 5 },
+        { name: "Деньгопушка", icon: "💵", cost: 15, effect: '+1ч дохода мгновенно', action: 'instantHour' },
+        { name: "Игра на бирже", icon: "📈", cost: 15, effect: 'x1.5 к доходу навсегда', action: 'permMult', value: 1.5 },
+        { name: "Золотой сейф", icon: "🔐", cost: 15, effect: 'x3 к клику навсегда', action: 'permClick', value: 3 },
+        { name: "Чемодан динаров", icon: "💼", cost: 20, effect: 'Мгновенный бонус', action: 'instantCps', value: 100 },
+        { name: "Тележка динаров", icon: "🛒", cost: 40, effect: 'Большой бонус', action: 'instantCps', value: 500 },
+        { name: "Паллет динаров", icon: "📦", cost: 80, effect: 'Огромный бонус', action: 'instantCps', value: 2500 },
+        { name: "Контейнер динаров", icon: "🚛", cost: 200, effect: 'Мега-бонус', action: 'instantCps', value: 10000 }
+    ]}
+};
+
+// ========== DOM ==========
+const gameContainer = document.getElementById('game-container');
+const moneyDigitsContainer = document.getElementById('money-digits');
+const cpsDisplay = document.getElementById('cps-display');
+const gemsDisplay = document.getElementById('gems-display');
+const mainArea = document.getElementById('main-area');
+const speechBubble = document.getElementById('speech-bubble');
+const tutorialHand = document.getElementById('tutorial-hand');
+const billStack = document.getElementById('bill-stack-container');
+const character = document.getElementById('character');
+const menuOverlay = document.getElementById('menu-overlay');
+const menuTitle = document.getElementById('menu-title');
+const menuSubtitle = document.getElementById('menu-subtitle');
+const menuList = document.getElementById('menu-list');
+const settingsMenu = document.getElementById('settings-menu');
+const pinCounter = document.getElementById('pin-counter');
+const comboIndicator = document.getElementById('combo-indicator');
+const greenAura = document.getElementById('green-aura');
+const dialogueOverlay = document.getElementById('dialogue-overlay');
+
+const bills = [
+    document.getElementById('bill-1'),
+    document.getElementById('bill-2'),
+    document.getElementById('bill-3')
+];
+
+const BILL_POSITIONS = [
+    { transform: 'translate(0, 0)', z: 5 },
+    { transform: 'translate(4px, 4px)', z: 4 },
+    { transform: 'translate(8px, 8px)', z: 3 }
+];
+
+let menuOpen = false;
+let currentMenu = null;
+let isTutorial = true;
+let lastSwipeTime = 0;
+let drag = null;
+let flyingBill = null;
+let flyingTimer = null;
+
+// ========== СМЕНА КАРТИНКИ КУПЮРЫ ==========
+function getBillImageByDenom(denom) {
+    if (denom === 1) return 'dinar.png';
+    return `dinar-${denom}.png`;
+}
+
+function updateBillImages() {
+    const src = getBillImageByDenom(gameState.billDenom);
+    currentBillSrc = src;
+
+    document.querySelectorAll('.bill-img').forEach(img => {
+        img.src = src;
+        img.style.display = 'block';
+        img.onerror = function() { this.style.display = 'none'; };
+    });
+
+    document.querySelectorAll('.bill-behind').forEach(el => {
+        el.style.backgroundImage = `url('${src}')`;
+    });
+}
+
+function applyBillPosition(bill, posIndex) {
+    const pos = BILL_POSITIONS[posIndex];
+    bill.style.transition = 'none';
+    bill.style.animation = 'none';
+    bill.style.transform = pos.transform;
+    bill.style.zIndex = pos.z;
+    bill.style.opacity = '1';
+}
+
+function resetAllBills() {
+    applyBillPosition(bills[0], 0);
+    applyBillPosition(bills[1], 1);
+    applyBillPosition(bills[2], 2);
+    void bills[0].offsetWidth;
+}
+
+// ========== КОМБО ==========
+const COMBO_GAP_MAX = 1000;
+const X2_DURATION = 4000;
+const X4_DURATION = 10000;
+
+let comboStreakStart = 0;
+let lastSwipeForCombo = 0;
+
+function registerSwipe() {
+    const now = Date.now();
+    if (now - lastSwipeForCombo > COMBO_GAP_MAX) comboStreakStart = now;
+    lastSwipeForCombo = now;
+    updateCombo();
+}
+
+function updateCombo() {
+    const now = Date.now();
+    if (now - lastSwipeForCombo > COMBO_GAP_MAX) {
+        if (gameState.comboMultiplier !== 1) {
+            gameState.comboMultiplier = 1;
+            comboIndicator.classList.remove('active', 'x4');
+            mainArea.classList.remove('combo-x2', 'combo-x4');
+            gameContainer.classList.remove('aura-x2', 'aura-x4');
+        }
+        comboStreakStart = 0;
+        return;
+    }
+    if (comboStreakStart === 0) comboStreakStart = lastSwipeForCombo;
+    const streakDuration = now - comboStreakStart;
+    let mult = 1;
+    if (streakDuration >= X4_DURATION) mult = 4;
+    else if (streakDuration >= X2_DURATION) mult = 2;
+    if (mult === gameState.comboMultiplier) return;
+    gameState.comboMultiplier = mult;
+
+    if (mult > 1) {
+        comboIndicator.textContent = `x${mult}`;
+        comboIndicator.classList.add('active');
+        comboIndicator.classList.toggle('x4', mult === 4);
+    } else {
+        comboIndicator.classList.remove('active', 'x4');
+    }
+
+    mainArea.classList.remove('combo-x2', 'combo-x4');
+    gameContainer.classList.remove('aura-x2', 'aura-x4');
+    if (mult === 4) {
+        mainArea.classList.add('combo-x4');
+        gameContainer.classList.add('aura-x4');
+    } else if (mult === 2) {
+        mainArea.classList.add('combo-x2');
+        gameContainer.classList.add('aura-x2');
+    }
+}
+setInterval(updateCombo, 100);
+
+// ========== ФОРМАТ ==========
+function formatNumber(num) {
+    if (num >= 1e18) return (num / 1e18).toFixed(1) + 'Qi';
+    if (num >= 1e15) return (num / 1e15).toFixed(1) + 'Q';
+    if (num >= 1e12) return (num / 1e12).toFixed(1) + 'T';
+    if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
+    return Math.floor(num).toString();
+}
+
+function renderMoneyCounter(value) {
+    let str;
+    if (value < 1000000) str = Math.floor(value).toString();
+    else str = formatNumber(value);
+    const digitCount = str.replace(/[^0-9]/g, '').length;
+    moneyDigitsContainer.classList.remove('small', 'tiny', 'micro', 'nano');
+    if (digitCount > 12) moneyDigitsContainer.classList.add('nano');
+    else if (digitCount > 9) moneyDigitsContainer.classList.add('micro');
+    else if (digitCount > 7) moneyDigitsContainer.classList.add('tiny');
+    else if (digitCount > 5) moneyDigitsContainer.classList.add('small');
+    moneyDigitsContainer.innerHTML = '';
+    for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+        if (ch >= '0' && ch <= '9') {
+            const cube = document.createElement('div');
+            cube.className = 'digit-cube';
+            cube.textContent = ch;
+            moneyDigitsContainer.appendChild(cube);
+        } else {
+            const span = document.createElement('span');
+            span.className = 'suffix-char';
+            span.textContent = ch;
+            moneyDigitsContainer.appendChild(span);
+        }
+    }
+}
+
+function updateUI() {
+    renderMoneyCounter(gameState.money);
+    cpsDisplay.textContent = `Д ${formatNumber(gameState.cps)} / сек`;
+    gemsDisplay.textContent = gameState.gems;
+    pinCounter.textContent = gameState.clickPower;
+    if (menuOpen && currentMenu) renderMenu(currentMenu);
+    if (gameStarted) checkDialogues();
+}
+
+function getCost(item) { return Math.floor(item.baseCost * Math.pow(1.15, item.count)); }
+
+// ========== ДИАЛОГИ ==========
+const ALAADIN_LINES = [
+    { text: "Время сделать Вадию великой снова! Просто считай динары!", check: () => gameState.money >= 0 },
+    { text: "Отлично! Динары текут рекой. Продолжай свайпать!", check: () => gameState.money >= 50 },
+    { text: "Покупай! Покупай немедленно! Теперь у нас есть деньги и благословение Аллаха!", check: () => gameState.money >= 80 },
+    { text: "Это твой первый шаг к могуществу! Бизнес работает на тебя.", check: () => MENUS.business.data[0].count > 0 },
+    { text: "Нам нужны богатейшие лидеры! Потрать 200 динаров на членство в элитном клубе.", check: () => gameState.money >= 200 && MENUS.reputation.data[0].count === 0 },
+    { text: "Теперь связи работают на тебя. Получай динары, даже когда приложение закрыто!", check: () => MENUS.reputation.data[0].count > 0 },
+    { text: "Строй здания! Каждый свайп будет приносить больше динаров!", check: () => gameState.money >= 500 && MENUS.construction.data[0].count === 0 },
+    { text: "У тебя есть кристаллы! Загляни в VIP — там мощные бусты.", check: () => gameState.gems >= 15 },
+    { text: "Ты совершил большую сделку! Динары обожают твои карманы и текут как река!", check: () => MENUS.business.data[2].count > 0 || MENUS.business.data[3].count > 0 },
+    { text: "Ты настоящий диктатор Вадии! Продолжай в том же духе!", check: () => gameState.money >= 1000000 }
+];
+
+let nextDialogueIndex = 0;
+let dialogueTimer = null;
+let dialogueVisible = false;
+
+function checkDialogues() {
+    if (dialogueVisible) return;
+    if (nextDialogueIndex >= ALAADIN_LINES.length) return;
+    const line = ALAADIN_LINES[nextDialogueIndex];
+    if (line.check()) {
+        showDialogue(line.text);
+        nextDialogueIndex++;
+    }
+}
+
+function showDialogue(text) {
+    dialogueVisible = true;
+    speechBubble.textContent = text;
+    speechBubble.style.display = 'block';
+    void speechBubble.offsetWidth;
+    speechBubble.style.opacity = '1';
+    speechBubble.style.transform = 'scale(1) translateY(0)';
+    character.style.display = 'flex';
+    void character.offsetWidth;
+    character.style.opacity = '1';
+    greenAura.classList.add('active');
+    dialogueOverlay.classList.add('active');
+    clearTimeout(dialogueTimer);
+    dialogueTimer = setTimeout(hideDialogue, 9000);
+}
+
+function hideDialogue() {
+    if (!dialogueVisible) return;
+    dialogueVisible = false;
+    speechBubble.style.opacity = '0';
+    speechBubble.style.transform = 'scale(0.8) translateY(20px)';
+    character.style.opacity = '0';
+    greenAura.classList.remove('active');
+    dialogueOverlay.classList.remove('active');
+    clearTimeout(dialogueTimer);
+    setTimeout(() => {
+        speechBubble.style.display = 'none';
+        character.style.display = 'none';
+    }, 400);
+}
+
+dialogueOverlay.addEventListener('click', hideDialogue);
+speechBubble.addEventListener('click', (e) => { e.stopPropagation(); hideDialogue(); });
+
+// ========== МЕНЮ ==========
+function openMenu(type, e) {
+    if (dialogueVisible) return;
+    if (e) e.stopPropagation();
+    currentMenu = type;
+    menuOpen = true;
+    menuTitle.textContent = MENUS[type].title;
+    menuSubtitle.textContent = MENUS[type].subtitle;
+    menuOverlay.style.display = 'flex';
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    if (e && e.currentTarget) e.currentTarget.classList.add('active');
+    renderMenu(type);
+}
+
+function closeMenu() { menuOverlay.style.display = 'none'; menuOpen = false; currentMenu = null; }
+
+function renderMenu(type) {
+    menuList.innerHTML = '';
+    MENUS[type].data.forEach((item, index) => {
+        const cost = getCost(item);
+        const isGem = type === 'vip';
+        const canAfford = isGem ? gameState.gems >= item.cost : gameState.money >= cost;
+        const isMaxed = item.max && item.count >= item.max;
+        const actualCost = isGem ? item.cost : cost;
+        let effectText = '';
+        if (type === 'business') effectText = `+Д ${formatNumber(item.cps)} / сек`;
+        else if (type === 'reputation') effectText = item.effect;
+        else if (type === 'construction') effectText = `Клик: +Д ${formatNumber(item.clickBonus)} • Номинал: ${formatNumber(item.denom)}`;
+        else if (type === 'vip') effectText = item.effect;
+        
+        const el = document.createElement('div');
+        el.className = 'menu-item';
+        el.innerHTML = `
+            <div class="menu-item-info">
+                <div class="menu-item-icon">${item.icon}</div>
+                <div class="menu-item-text"><h3>${item.name}</h3><p>${effectText}</p></div>
+            </div>
+            <button class="buy-btn ${!canAfford || isMaxed ? 'disabled' : ''} ${isGem ? 'gem-btn' : ''}" 
+                    onclick="buyItem('${type}', ${index})" ${!canAfford || isMaxed ? 'disabled' : ''}>
+                <span class="cost">${isGem ? '💎 ' + actualCost : 'Д ' + formatNumber(actualCost)}</span>
+                <span class="count">${isMaxed ? 'МАКС' : 'Куплено: ' + (item.count || 0)}</span>
+            </button>`;
+        menuList.appendChild(el);
+    });
+}
+
+function buyItem(type, index) {
+    const item = MENUS[type].data[index];
+    const cost = getCost(item);
+    if (type === 'vip') {
+        if (gameState.gems < item.cost) return;
+        gameState.gems -= item.cost;
+        applyVipEffect(item);
+    } else {
+        if (gameState.money < cost) return;
+        if (item.max && item.count >= item.max) return;
+        gameState.money -= cost;
+        item.count++;
+        if (type === 'business') gameState.cps += item.cps;
+        else if (type === 'reputation') gameState.offlineHours += item.offlineAdd;
+        else if (type === 'construction') { 
+            gameState.clickPower += item.clickBonus; 
+            gameState.billDenom = item.denom; 
+            updateBillImages();
+        }
+    }
+    updateUI(); renderMenu(type);
+}
+
+function applyVipEffect(item) {
+    if (item.action === 'instantMult') gameState.money *= item.value;
+    else if (item.action === 'instantHour') gameState.money += gameState.cps * 3600;
+    else if (item.action === 'instantCps') gameState.money += gameState.cps * item.value * 10;
+    else if (item.action === 'permMult') { gameState.cpsMultiplier *= item.value; recalcCps(); }
+    else if (item.action === 'permClick') gameState.clickMultiplier *= item.value;
+}
+
+function recalcCps() {
+    let base = 0;
+    MENUS.business.data.forEach(b => base += b.cps * b.count);
+    gameState.cps = Math.floor(base * gameState.cpsMultiplier);
+}
+
+// ========== НАСТРОЙКИ ==========
+document.getElementById('sound-toggle').addEventListener('change', e => soundEnabled = e.target.checked);
+document.getElementById('music-toggle').addEventListener('change', e => {
+    musicEnabled = e.target.checked;
+    if (musicEnabled) music.play().catch(() => {}); else music.pause();
+});
+
+function toggleSettings() {
+    if (dialogueVisible) return;
+    if (settingsMenu.style.display === 'flex') { settingsMenu.style.display = 'none'; menuOpen = false; }
+    else { menuOverlay.style.display = 'none'; settingsMenu.style.display = 'flex'; menuOpen = true; }
+}
+
+// ========== ЗАГРУЗКА ==========
+const loadingScreen = document.getElementById('loading-screen');
+const loadingFill = document.querySelector('.loading-fill');
+const startBtn = document.getElementById('start-btn');
+
+setTimeout(() => loadingFill.style.width = '100%', 100);
+setTimeout(() => startBtn.classList.add('visible'), 1600);
+
+startBtn.addEventListener('click', () => {
+    loadingScreen.style.opacity = '0';
+    gameContainer.classList.add('ready');
+    setTimeout(() => loadingScreen.style.display = 'none', 600);
+    if (musicEnabled) music.play().catch(() => {});
+    gameStarted = true;
+    setTimeout(() => { checkDialogues(); }, 800);
+});
+
+resetAllBills();
+
+// ========== DRAG ==========
+const DRAG_THRESHOLD = 60;
+
+function getMainScale() {
+    if (mainArea.classList.contains('combo-x4')) return 1.18;
+    if (mainArea.classList.contains('combo-x2')) return 1.08;
+    return 1;
+}
+
+function startDrag(e) {
+    if (menuOpen || dialogueVisible) return;
+    const touch = e.touches ? e.touches[0] : e;
+    drag = { startX: touch.clientX, startY: touch.clientY, startTime: Date.now(), moved: false };
+    if (isTutorial) { tutorialHand.style.opacity = '0'; isTutorial = false; }
+}
+
+function moveDrag(e) {
+    if (!drag || menuOpen || dialogueVisible) return;
+    const touch = e.touches ? e.touches[0] : e;
+    const scale = getMainScale();
+    const dx = (touch.clientX - drag.startX) / scale;
+    const dy = (touch.clientY - drag.startY) / scale;
+    drag.moved = true;
+    bills[0].style.transition = 'none';
+    bills[0].style.transform = `translate(${dx}px, ${dy}px) rotate(${dx * 0.05}deg)`;
+}
+
+function endDrag(e) {
+    if (!drag || menuOpen || dialogueVisible) return;
+    const touch = e.changedTouches ? e.changedTouches[0] : e;
+    const dx = touch.clientX - drag.startX;
+    const dy = touch.clientY - drag.startY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const elapsed = Date.now() - drag.startTime;
+    drag = null;
+
+    if (distance < DRAG_THRESHOLD) {
+        bills[0].style.transition = 'transform 0.25s cubic-bezier(0.25, 1, 0.5, 1)';
+        bills[0].style.transform = 'translate(0, 0)';
+        setTimeout(() => { bills[0].style.transition = 'none'; }, 250);
+        if (distance < 10 && elapsed < 300) {
+            swipeTopBill('up');
+        }
+        return;
+    }
+    
+    let direction = 'up';
+    if (Math.abs(dx) > Math.abs(dy)) direction = dx > 0 ? 'right' : 'left';
+    swipeTopBill(direction);
+}
+
+// ========== ЛИСТАНИЕ ==========
+function swipeTopBill(direction) {
+    if (soundEnabled) { swipeSound.play().catch(() => {}); }
+    registerSwipe();
+
+    const top = bills[0];
+    const mid = bills[1];
+    const bot = bills[2];
+
+    if (flyingTimer) { clearTimeout(flyingTimer); flyingTimer = null; }
+    if (flyingBill) {
+        flyingBill.style.animation = 'none';
+        flyingBill.style.transition = 'none';
+        flyingBill.style.transform = BILL_POSITIONS[2].transform;
+        flyingBill.style.zIndex = BILL_POSITIONS[2].z;
+        flyingBill.style.opacity = '1';
+        flyingBill = null;
+    }
+
+    const now = Date.now();
+    const timeSinceLast = now - lastSwipeTime;
+    lastSwipeTime = now;
+    let duration = 200;
+    if (timeSinceLast < 50) duration = 70;
+    else if (timeSinceLast < 100) duration = 110;
+    else if (timeSinceLast < 180) duration = 150;
+
+    let animName = 'flyUpAnim';
+    if (direction === 'left') animName = 'flyLeftAnim';
+    else if (direction === 'right') animName = 'flyRightAnim';
+
+    mid.style.transition = 'none'; mid.style.animation = 'none';
+    mid.style.transform = BILL_POSITIONS[0].transform;
+    mid.style.zIndex = BILL_POSITIONS[0].z; mid.style.opacity = '1';
+
+    bot.style.transition = 'none'; bot.style.animation = 'none';
+    bot.style.transform = BILL_POSITIONS[1].transform;
+    bot.style.zIndex = BILL_POSITIONS[1].z; bot.style.opacity = '1';
+
+    top.style.transition = 'none'; top.style.animation = 'none';
+    void top.offsetWidth;
+    top.style.animation = `${animName} ${duration}ms cubic-bezier(0.3, 0, 0.7, 1) forwards`;
+    top.style.zIndex = 50;
+    flyingBill = top;
+
+    flyingTimer = setTimeout(() => {
+        top.style.animation = 'none'; top.style.transition = 'none';
+        top.style.transform = BILL_POSITIONS[2].transform;
+        top.style.zIndex = BILL_POSITIONS[2].z; top.style.opacity = '1';
+        flyingBill = null; flyingTimer = null;
+    }, duration);
+
+    bills.push(bills.shift());
+
+    const gain = Math.floor(gameState.clickPower * gameState.clickMultiplier * gameState.comboMultiplier);
+    gameState.money += gain;
+    if (Math.random() < 0.02) gameState.gems++;
+    updateUI();
+    createFloatingText(gameState.comboMultiplier);
+
+    spawnFlyAway();
+    if (timeSinceLast < 100) spawnFlyAway();
+}
+
+function spawnFlyAway() {
+    const el = document.createElement('div');
+    el.className = 'fly-away';
+    el.style.backgroundImage = `url('${currentBillSrc}')`;
+    const dirX = (Math.random() - 0.5) * 800;
+    const dirY = -200 - Math.random() * 500;
+    const rot = (Math.random() - 0.5) * 900;
+    const dur = 700 + Math.random() * 500;
+    el.style.setProperty('--ex', dirX + 'px');
+    el.style.setProperty('--ey', dirY + 'px');
+    el.style.setProperty('--er', rot + 'deg');
+    el.style.marginLeft = (-30 + (Math.random() - 0.5) * 80) + 'px';
+    el.style.marginTop = (-70 + (Math.random() - 0.5) * 80) + 'px';
+    el.style.animation = `flyAway ${dur}ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards`;
+    mainArea.appendChild(el);
+    setTimeout(() => el.remove(), dur + 50);
+}
+
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+@keyframes flyUpAnim { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(0, -600px) rotate(-15deg); opacity: 0; } }
+@keyframes flyLeftAnim { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(-600px, -400px) rotate(-35deg); opacity: 0; } }
+@keyframes flyRightAnim { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(600px, -400px) rotate(35deg); opacity: 0; } }
+`;
+document.head.appendChild(styleSheet);
+
+function createFloatingText(comboMult) {
+    const amount = Math.floor(gameState.clickPower * gameState.clickMultiplier * (comboMult || 1));
+    const t = document.createElement('div');
+    t.className = 'floating-text';
+    if (comboMult > 1) { t.classList.add('combo'); t.textContent = `+Д ${formatNumber(amount)} x${comboMult}`; }
+    else t.textContent = `+Д ${formatNumber(amount)}`;
+    const rect = mainArea.getBoundingClientRect();
+    t.style.left = `${rect.width / 2}px`;
+    t.style.top = `${rect.height / 2}px`;
+    mainArea.appendChild(t);
+    setTimeout(() => t.remove(), 1000);
+}
+
+// ========== ИГРОВОЙ ЦИКЛ ==========
+setInterval(() => {
+    if (gameState.cps > 0) { gameState.money += gameState.cps; updateUI(); }
+}, 1000);
+
+// ========== СОБЫТИЯ ==========
+billStack.addEventListener('mousedown', startDrag);
+document.addEventListener('mousemove', moveDrag);
+document.addEventListener('mouseup', endDrag);
+billStack.addEventListener('touchstart', e => { e.preventDefault(); startDrag(e); }, { passive: false });
+document.addEventListener('touchmove', e => { if (drag) { e.preventDefault(); moveDrag(e); } }, { passive: false });
+document.addEventListener('touchend', e => { if (drag) { e.preventDefault(); endDrag(e); } }, { passive: false });
+document.addEventListener('touchcancel', e => { if (drag) endDrag(e); });
+menuOverlay.addEventListener('click', e => { if (e.target === menuOverlay) closeMenu(); });
+settingsMenu.addEventListener('click', e => { if (e.target === settingsMenu) toggleSettings(); });
+
+updateUI();
+</script>
+</body>
+</html>
